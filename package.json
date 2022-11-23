@@ -1,0 +1,50 @@
+{
+  "name": "ts-refs",
+  "version": "0.0.2",
+  "description": "Create a reference object that can be monitored.",
+  "main": "./dist/ref.js",
+  "typings": "./dist/ref.d.ts",
+  "author": "clarewu",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/babyblue94520/ref.git"
+  },
+  "keywords": [
+    "ref",
+    "computed",
+    "rxjs",
+    "data driven"
+  ],
+  "bugs": {
+    "url": "https://github.com/babyblue94520/ref/issues"
+  },
+  "homepage": "https://github.com/babyblue94520/ref",
+  "files": [
+    "dist/*"
+  ],
+  "scripts": {
+    "clean": "node clean.js",
+    "build": "npm run clean && tsc",
+    "test": "jest",
+    "rollup": "rollup -c rollup.config.js --no-conflict",
+    "rollup:min": "rollup -c rollup.config.min.js",
+    "lib": "npm run rollup && npm run rollup:min",
+    "deploy": "npm run test && npm run build && npm publish"
+  },
+  "private": false,
+  "dependencies": {},
+  "devDependencies": {
+    "@types/jest": "^29.1.2",
+    "jasmine": "^4.4.0",
+    "jest": "^29.2.0",
+    "rollup": "^2.0.0",
+    "rollup-plugin-buble": "^0.19.4",
+    "rollup-plugin-node-resolve": "^3.4.0",
+    "rollup-plugin-terser": "^7.0.2",
+    "rollup-plugin-typescript": "^1.0.0",
+    "ts-jest": "^29.0.3",
+    "tslib": "^2.4.0",
+    "typescript": "^4.8.4"
+  }
+}
