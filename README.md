@@ -2,6 +2,16 @@
 
 Create a reference object that can be monitored.
 
+[npm](https://www.npmjs.com/package/ts-refs)
+
+## Install
+
+```cmd
+npm i ts-refs
+```
+
+
+
 ## Usage
 
 ### Refs
