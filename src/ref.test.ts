@@ -154,6 +154,7 @@ let refs = new Refs();
             a.set(3);
             b.set(3);
         });
+
         expect(a.get()).toBe(3);
         expect(b.get()).toBe(3);
         expect(c.get()).toBe(a.get() + b.get() + 1);
@@ -187,4 +188,28 @@ let refs = new Refs();
         expect(a.get()).toBe(3);
     });
 
+})();
+
+(() => {
+    let a = refs.of(1);
+    let b = refs.ofComputed(() => a.get() + 1);
+    let c = refs.ofComputed(() => b.get() + 1);
+    let d = refs.ofComputed(() => c.get() + 1);
+    let count = 0;
+    d.listen(() => {
+        count++;
+    });
+
+    test('ref compute get 2', () => {
+        expect(a.get()).toBe(1);
+        expect(b.get()).toBe(a.get() + 1);
+        expect(c.get()).toBe(b.get() + 1);
+        expect(d.get()).toBe(c.get() + 1);
+
+        a.set(2);
+        expect(a.get()).toBe(2);
+        expect(b.get()).toBe(a.get() + 1);
+        expect(c.get()).toBe(b.get() + 1);
+        expect(d.get()).toBe(c.get() + 1);
+    });
 })();

@@ -36,6 +36,7 @@ function clearDepend(ref: Ref): void {
         r.get();
     });
     cleaning = false;
+    return;
 }
 
 function clearDepends(): void {
@@ -58,12 +59,11 @@ function clearDepends(): void {
 function scanRef(ref: Ref, collection: Map<Ref, any> = new Map()): Map<Ref, any> {
     let map = refDependMap.get(ref);
     if (map) {
-        let s = map.size;
         map.forEach(r => {
+            if (collection.get(r)) return;
             collection.set(r, true);
             scanRef(r, collection);
         });
-        map.clear();
     }
     return collection;
 }
@@ -71,9 +71,7 @@ function scanRef(ref: Ref, collection: Map<Ref, any> = new Map()): Map<Ref, any>
 function addDepend(ref: Ref) {
     let currentRef = computeRefQueue[computeRefQueue.length - 1];
     if (currentRef) {
-        if (currentRef == ref) {
-            throw new Error('Doesn\'t depend self!');
-        }
+        if (currentRef == ref) return;
         let refMap = computeIfAbsent(refDependMap, ref, (k) => {
             return new Map();
         });
@@ -148,23 +146,25 @@ export default class Refs {
     /**
      * Create cacheable Ref.
      */
-    public ofCache<Value = any, Scope = any>(config: RefCacheConfig<Value>, scope?: Scope): RefCache<Value, Scope> {
+    public ofCache<Value = any, Scope = any>(config: RefCacheConfig<Value>, scope?: Scope, operators?: any[]): RefValue<Value, Scope> {
         let storage = config.local ? this.localStorage : this.sessionStorage;
-        let value: any = storage.getItem(config.name);
-        if (value) {
+        let value: Value;
+        let cache: string = storage.getItem(config.name);
+        if (cache) {
             try {
-                value = JSON.parse(value);
+                value = JSON.parse(cache);
             } catch (e) {
                 console.warn(e);
-                value = undefined;
             }
         }
         if (value == undefined) {
             value = config.value;
         }
-        return new RefCache(scope, value, (str) => {
-            storage.setItem(config.name, str);
+        let ref = this.of(value, scope, operators);
+        ref.listen(() => {
+            storage.setItem(config.name, ref.stringify());
         });
+        return ref;
     }
 
     /**
@@ -241,6 +241,10 @@ export abstract class Ref<Value = any, Scope = any>  {
 
     public abstract clear(): void;
 
+    public stringify(): string {
+        return this.valueStringify;
+    }
+
     public getScope(): Scope {
         return this.scope;
     }
@@ -255,7 +259,14 @@ export abstract class Ref<Value = any, Scope = any>  {
         this.listeners.removeAllListener(scope);
     }
 
-    protected setValue(value: Value): boolean {
+    protected setValue(value: Value) {
+        if (this.doSetValue(value)) {
+            clearDepend(this);
+            this.listeners.dispatch(this.value);
+        }
+    }
+
+    protected doSetValue(value: Value): boolean {
         let stringify = JSON.stringify(value);
         if (this.valueStringify === stringify) return false;
         this.oldValue = this.value;
@@ -263,13 +274,7 @@ export abstract class Ref<Value = any, Scope = any>  {
         this.valueStringify = stringify;
         return true;
     }
-
-    protected dispatch() {
-        clearDepend(this);
-        this.listeners.dispatch(this.value);
-    }
 }
-
 
 export class RefValue<Value = any, Scope = any> extends Ref<Value, Scope> {
     constructor(
@@ -279,7 +284,7 @@ export class RefValue<Value = any, Scope = any> extends Ref<Value, Scope> {
         protected operators?: any[]
     ) {
         super(scope);
-        this.setValue(provider);
+        this.doSetValue(provider);
     }
 
     public get(): Value {
@@ -287,21 +292,18 @@ export class RefValue<Value = any, Scope = any> extends Ref<Value, Scope> {
         return this.value;
     }
 
+    public clear(): void {
+        this.set(this.provider);
+    }
+
     public set(value: Value, operator?: any) {
         if ((this.operators?.length || 0) > 0 && this.operators.indexOf(operator) == -1) {
             console.error('The operator does\'t settable!', operator);
             throw new Error('The operator does\'t settable!');
         }
-        if (this.setValue(value)) {
-            this.dispatch();
-        }
-    }
-
-    public clear(): void {
-        this.set(this.provider);
+        this.setValue(value);
     }
 }
-
 
 export class RefComputed<Value = any, Scope = any> extends Ref<Value, Scope>  {
     constructor(
@@ -312,12 +314,11 @@ export class RefComputed<Value = any, Scope = any> extends Ref<Value, Scope>  {
     }
 
     public get() {
+        addDepend(this);
         if (this.valueStringify == undefined) {
             try {
-                addDepend(this);
                 computeRefQueue.push(this);
                 this.setValue(this.provider());
-                this.dispatch();
             } finally {
                 computeRefQueue.pop();
             }
@@ -329,18 +330,4 @@ export class RefComputed<Value = any, Scope = any> extends Ref<Value, Scope>  {
         this.valueStringify = undefined;
     }
 
-}
-
-export class RefCache<Value = any, Scope = any> extends RefValue<Value, Scope> {
-    constructor(scope: Scope, provider: Value, protected save: (value: string) => void) {
-        super(scope, provider);
-    }
-
-    protected setValue(value: Value): boolean {
-        let change = super.setValue(value);
-        if (change && this.save) {
-            this.save(this.valueStringify);
-        }
-        return change;
-    }
 }
