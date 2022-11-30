@@ -1,12 +1,13 @@
 import ListenerContainer from './listener';
 
-const refDependMap = new Map<Ref, Map<Ref, Ref>>();
+const refDependMap = new Map<Ref, Map<RefComputed, RefComputed>>();
 
 const scopeMap = new Map<any, RefScope>();
 
-const computeRefQueue: Ref[] = [];
+const computeRefQueue: RefComputed[] = [];
 
 const scopeQueue: any[] = [];
+
 const txRefs = [];
 
 let currentScope: any = {};
@@ -29,12 +30,8 @@ function clearDepend(ref: Ref): void {
     }
     cleaning = true;
     let refMap = scanRef(ref);
-    refMap.forEach((v, r) => {
-        r.clear();
-    });
-    refMap.forEach((v, r) => {
-        r.get();
-    });
+    refMap.forEach(r => r.clear());
+    refMap.forEach(r => r.recompute());
     cleaning = false;
     return;
 }
@@ -43,27 +40,22 @@ function clearDepends(): void {
     if (cleaning) return;
     cleaning = true;
     let refMap = new Map();
-    txRefs.forEach(ref => {
-        scanRef(ref, refMap);
-    });
-    refMap.forEach((v, r) => {
-        r.clear();
-    });
-    refMap.forEach((v, r) => {
-        r.get();
-    });
+    txRefs.forEach(ref => scanRef(ref, refMap));
+    refMap.forEach(r => r.clear());
+    refMap.forEach(r => r.recompute());
     txRefs.length = 0;
     cleaning = false;
 }
 
-function scanRef(ref: Ref, collection: Map<Ref, any> = new Map()): Map<Ref, any> {
+function scanRef(ref: Ref, collection: Map<RefComputed, RefComputed> = new Map()): Map<RefComputed, RefComputed> {
     let map = refDependMap.get(ref);
     if (map) {
         map.forEach(r => {
             if (collection.get(r)) return;
-            collection.set(r, true);
+            collection.set(r, r);
             scanRef(r, collection);
         });
+        map.clear();
     }
     return collection;
 }
@@ -114,7 +106,7 @@ export type RefListener<Value> = (value: Value, oldValue: Value) => void;
 
 export interface RefScope {
     listenRefs: Ref[];
-    refMap: Map<Ref, Map<Ref, Ref>>;
+    refMap: Map<RefComputed, Map<RefComputed, RefComputed>>;
 }
 
 export interface RefStorage {
@@ -330,4 +322,9 @@ export class RefComputed<Value = any, Scope = any> extends Ref<Value, Scope>  {
         this.valueStringify = undefined;
     }
 
+    public recompute() {
+        if (this.listeners.count() > 0) {
+            this.get();
+        }
+    }
 }

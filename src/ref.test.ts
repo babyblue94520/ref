@@ -32,19 +32,29 @@ let refs = new Refs();
 })();
 
 (() => {
+    let cComputedCount = 0;
+    let dComputedCount = 0;
+
     let a = refs.of(1);
     let b = refs.of(2);
-    let c = refs.ofComputed(() => a.get() + 1);
-    let d = refs.ofComputed(() => a.get() + b.get() + 1);
+    let c = refs.ofComputed(() => {
+        cComputedCount++;
+        return a.get() + 1;
+    });
+    let d = refs.ofComputed(() => {
+        dComputedCount++;
+        return a.get() + b.get() + 1;
+    });
 
     let acount = 0;
     let bcount = 0;
     let ccount = 0;
     let dcount = 0;
+
     a.listen(() => acount++);
     b.listen(() => bcount++);
     c.listen(() => ccount++);
-    d.listen(() => dcount++);
+    d.listen(() => dcount++, d);
 
     test('ref compute get', () => {
         expect(a.get()).toBe(1);
@@ -55,10 +65,14 @@ let refs = new Refs();
         expect(bcount).toBe(1);
         expect(ccount).toBe(1);
         expect(dcount).toBe(1);
+        expect(cComputedCount).toBe(1);
+        expect(dComputedCount).toBe(1);
     });
 
     test('ref compute set', () => {
         a.set(2);
+        expect(cComputedCount).toBe(2);
+        expect(dComputedCount).toBe(2);
         expect(a.get()).toBe(2);
         expect(b.get()).toBe(2);
         expect(c.get()).toBe(a.get() + 1);
@@ -71,6 +85,8 @@ let refs = new Refs();
 
     test('ref compute set 2', () => {
         b.set(3);
+        expect(cComputedCount).toBe(2);
+        expect(dComputedCount).toBe(3);
         expect(a.get()).toBe(2);
         expect(b.get()).toBe(3);
         expect(c.get()).toBe(a.get() + 1);
@@ -84,6 +100,8 @@ let refs = new Refs();
 
     test('ref compute clear', () => {
         a.clear();
+        expect(cComputedCount).toBe(3);
+        expect(dComputedCount).toBe(4);
         expect(a.get()).toBe(1);
         expect(b.get()).toBe(3);
         expect(c.get()).toBe(a.get() + 1);
@@ -94,16 +112,21 @@ let refs = new Refs();
         expect(dcount).toBe(4);
     });
 
+
     test('ref compute clear 2', () => {
+        d.interrupt(d);
         b.clear();
+        expect(cComputedCount).toBe(3);
+        expect(dComputedCount).toBe(4);
         expect(a.get()).toBe(1);
         expect(b.get()).toBe(2);
         expect(c.get()).toBe(a.get() + 1);
         expect(d.get()).toBe(a.get() + b.get() + 1);
+        expect(dComputedCount).toBe(5);
         expect(acount).toBe(3);
         expect(bcount).toBe(3);
         expect(ccount).toBe(3);
-        expect(dcount).toBe(5);
+        expect(dcount).toBe(4);
     });
 })();
 
