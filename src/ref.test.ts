@@ -214,25 +214,51 @@ let refs = new Refs();
 })();
 
 (() => {
+    let bfn = () => /*b*/a.get() + 1;
+    let cfn = () => /*c*/b.get() + 1;
+    let dfn = () => /*d*/c.get() + 1;
+    let efn = () => /*e*/b.get() + 1;
+
+
     let a = refs.of(1);
-    let b = refs.ofComputed(() => a.get() + 1);
-    let c = refs.ofComputed(() => b.get() + 1);
-    let d = refs.ofComputed(() => c.get() + 1);
+    let b = refs.ofComputed(bfn);
+    let c = refs.ofComputed(cfn);
+    let d = refs.ofComputed(dfn);
+    let e = refs.ofComputed(efn);
+
     let count = 0;
     d.listen(() => {
         count++;
     });
 
-    test('ref compute get 2', () => {
-        expect(a.get()).toBe(1);
-        expect(b.get()).toBe(a.get() + 1);
-        expect(c.get()).toBe(b.get() + 1);
-        expect(d.get()).toBe(c.get() + 1);
+    test('ref performance', () => {
+        verifyLoop(1000);
 
-        a.set(2);
-        expect(a.get()).toBe(2);
-        expect(b.get()).toBe(a.get() + 1);
-        expect(c.get()).toBe(b.get() + 1);
-        expect(d.get()).toBe(c.get() + 1);
-    });
+        loop(100000);
+    })
+
+    function verifyLoop(max) {
+        count = 0;
+        console.log('verifyLoop start')
+        let t = Date.now();
+        while (max-- > 0) {
+            a.set(max);
+            expect(a.get()).toBe(max);
+            expect(b.get()).toBe(bfn());
+            expect(c.get()).toBe(cfn());
+            expect(d.get()).toBe(dfn());
+            expect(e.get()).toBe(efn());
+        }
+        console.log(Date.now() - t, max, count);
+    }
+
+    function loop(max) {
+        count = 0;
+        console.log('loop start')
+        let t = Date.now();
+        while (max-- > 0) {
+            a.set(max);
+        }
+        console.log(Date.now() - t, max, count);
+    }
 })();

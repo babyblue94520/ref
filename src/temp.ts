@@ -1,6 +1,106 @@
-import ListenerContainer from './listener';
+interface ListenerData<Listener> {
+    target: Object,
+    listener: Listener;
+    once: boolean;
+}
+
+class ListenerContainer<Listener extends Function = Function>{
+    private readonly listenerMap = new Map<Listener, ListenerData<Listener>>();
+    private listeners: ListenerData<Listener>[] = [];
+
+    public addListener(listener: Listener, target: Object = this): Listener {
+        if (this.listenerMap.get(listener)) {
+            return undefined;
+        }
+        let data: ListenerData<Listener> = {
+            target: target,
+            listener: listener,
+            once: false,
+        };
+        this.listeners.push(data);
+        this.listenerMap.set(listener, data);
+        return listener;
+    }
+
+    public addOnceListener(listener: Listener, target: Object = this): Listener {
+        if (this.listenerMap.get(listener)) {
+            return undefined;
+        }
+        let data: ListenerData<Listener> = {
+            target: target,
+            listener: listener,
+            once: true,
+        };
+        this.listeners.push(data);
+        this.listenerMap.set(listener, data);
+        return listener;
+    }
+
+    public removeListener(listener: Listener): void {
+        this.listeners.forEach((data, i) => {
+            if (data?.listener == listener) this.mark(data.listener, i);
+        });
+        this.clearMark();
+    }
+
+    public removeAllListener(target: Object): void {
+        this.listeners.forEach((data, i) => {
+            if (data?.target == target) this.mark(data.listener, i);
+        });
+        this.clearMark();
+    }
+
+    public dispatch(...args) {
+        // return this.dispatchIgnoreTarget(null, args);
+    }
+
+    public dispatchIgnoreTarget(target: any, args) {
+        if (this.listeners.length == 0) return;
+        let clear = false;
+        this.listeners.forEach((data, i) => {
+            try {
+                if (target == data?.target) return;
+                data.listener.apply(data.target, args);
+            } catch (e) {
+                clear = true;
+                this.mark(data.listener, i);
+                console.error(e, data);
+            }
+            if (data.once) {
+                clear = true;
+                this.mark(data.listener, i);
+            }
+        });
+
+        if (clear) {
+            console.log('clearMark')
+            this.clearMark();
+        }
+    }
+
+    public count() {
+        return this.listeners.length;
+    }
+
+    public clear() {
+        this.listeners.length = 0;
+        this.listenerMap.clear();
+    }
+
+    private mark(listener: Listener, index) {
+        this.listeners[index] = undefined;
+        this.listenerMap.delete(listener);
+    }
+
+    private clearMark() {
+        this.listeners = this.listeners.filter(data => data);
+    }
+}
+
 
 const refDependMap = new Map<Ref, Map<RefComputed, RefComputed>>();
+
+const refDefaultMethodMap = new Map<Ref, Function>();
 
 const scopeMap = new Map<any, RefScope>();
 
@@ -96,7 +196,7 @@ function computeIfAbsent<K, V>(map: Map<K, V>, key: K, callable: ((key: K) => V)
 }
 
 
-export interface RefCacheConfig<Value> {
+interface RefCacheConfig<Value> {
     // Cache name
     name: string;
     // Cache value in localStorage or sessionStorage
@@ -104,19 +204,19 @@ export interface RefCacheConfig<Value> {
     value: Value;
 }
 
-export type RefListener<Value> = (value: Value, oldValue: Value) => void;
+type RefListener<Value> = (value: Value, oldValue: Value) => void;
 
-export interface RefScope {
+interface RefScope {
     listenRefs: Ref[];
     refMap: Map<RefComputed, Map<RefComputed, RefComputed>>;
 }
 
-export interface RefStorage {
+interface RefStorage {
     getItem(key: string): string;
     setItem(key: string, value: string);
 }
 
-export default class Refs {
+class Refs {
 
     private localStorage: RefStorage = { getItem(key) { return null; }, setItem(key, value) { } };
 
@@ -182,6 +282,7 @@ export default class Refs {
         if (scopeContext) {
             scopeContext.refMap.forEach((map, ref) => {
                 map.delete(ref);
+                refDefaultMethodMap.delete(ref);
             });
             scopeContext.listenRefs.forEach((ref) => {
                 ref.interrupt(scope);
@@ -215,8 +316,7 @@ export default class Refs {
     }
 }
 
-
-export abstract class Ref<Value = any, Scope = any>  {
+abstract class Ref<Value = any, Scope = any>  {
 
     protected readonly listeners = new ListenerContainer<RefListener<Value>>();
 
@@ -268,7 +368,7 @@ export abstract class Ref<Value = any, Scope = any>  {
     }
 }
 
-export class RefValue<Value = any, Scope = any> extends Ref<Value, Scope> {
+class RefValue<Value = any, Scope = any> extends Ref<Value, Scope> {
     constructor(
         scope: Scope
         , protected provider: Value
@@ -297,7 +397,8 @@ export class RefValue<Value = any, Scope = any> extends Ref<Value, Scope> {
     }
 }
 
-export class RefComputed<Value = any, Scope = any> extends Ref<Value, Scope>  {
+class RefComputed<Value = any, Scope = any> extends Ref<Value, Scope>  {
+
     private dirty = false;
 
     constructor(
@@ -339,4 +440,60 @@ export class RefComputed<Value = any, Scope = any> extends Ref<Value, Scope>  {
         }
         return this.value;
     }
+}
+
+
+
+
+let refs = new Refs();
+let s = {};
+let bfn = () => /*b*/a.get() + 1;
+let cfn = () => /*c*/b.get() + 1;
+let dfn = () => /*d*/c.get() + 1;
+let efn = () => /*e*/b.get() + 1;
+
+
+let a = refs.of(1);
+let b = refs.ofComputed(bfn);
+let c = refs.ofComputed(cfn);
+let d = refs.ofComputed(dfn, s);
+let e = refs.ofComputed(efn);
+let count = 0;
+d.listen(() => {
+    count++;
+});
+
+
+// verifyLoop(1000000);
+
+loop(1000000);
+
+function verifyLoop(max) {
+    count = 0;
+    console.log('verifyLoop start')
+    let t = Date.now();
+    while (max-- > 0) {
+        a.set(max);
+        verify('a', a.get(), () => max);
+        verify('b', b.get(), bfn);
+        verify('c', c.get(), cfn);
+        verify('d', d.get(), dfn);
+        verify('e', e.get(), efn);
+    }
+    console.log(Date.now() - t, max, count);
+}
+
+function verify(name, value, fn) {
+    let expected = fn();
+    if (value != expected) throw new Error(`${name} ${value} not equals ${expected}`);
+}
+
+function loop(max) {
+    count = 0;
+    console.log('loop start')
+    let t = Date.now();
+    while (max-- > 0) {
+        a.set(max);
+    }
+    console.log(Date.now() - t, max, count);
 }
