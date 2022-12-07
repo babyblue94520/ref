@@ -7,7 +7,7 @@ export interface RefCacheConfig<Value> {
 export declare type RefListener<Value> = (value: Value, oldValue: Value) => void;
 export interface RefScope {
     listenRefs: Ref[];
-    refMap: Map<Ref, Map<Ref, Ref>>;
+    refMap: Map<RefComputed, Map<RefComputed, RefComputed>>;
 }
 export interface RefStorage {
     getItem(key: string): string;
@@ -28,7 +28,7 @@ export default class Refs {
     /**
      * Create cacheable Ref.
      */
-    ofCache<Value = any, Scope = any>(config: RefCacheConfig<Value>, scope?: Scope): RefCache<Value, Scope>;
+    ofCache<Value = any, Scope = any>(config: RefCacheConfig<Value>, scope?: Scope, operators?: any[]): RefValue<Value, Scope>;
     /**
      * Operate any ref in scope.
      */
@@ -52,29 +52,25 @@ export declare abstract class Ref<Value = any, Scope = any> {
     protected valueStringify: string;
     constructor(scope: Scope);
     abstract get(): Value;
-    abstract clear(): void;
+    stringify(): string;
     getScope(): Scope;
     listen(listener: RefListener<Value>, scope?: Scope): void;
     interrupt(scope: Scope): void;
-    protected setValue(value: Value): boolean;
-    protected dispatch(): void;
+    protected setValue(value: Value): void;
+    protected doSetValue(value: Value): boolean;
 }
 export declare class RefValue<Value = any, Scope = any> extends Ref<Value, Scope> {
     protected provider: Value;
     protected operators?: any[];
     constructor(scope: Scope, provider: Value, /** settable operator */ operators?: any[]);
     get(): Value;
-    set(value: Value, operator?: any): void;
     clear(): void;
+    set(value: Value, operator?: any): void;
 }
 export declare class RefComputed<Value = any, Scope = any> extends Ref<Value, Scope> {
     protected provider: (() => Value);
+    private dirty;
     constructor(scope: Scope, provider: (() => Value));
-    get(): Value;
-    clear(): void;
-}
-export declare class RefCache<Value = any, Scope = any> extends RefValue<Value, Scope> {
-    protected save: (value: string) => void;
-    constructor(scope: Scope, provider: Value, save: (value: string) => void);
-    protected setValue(value: Value): boolean;
+    protected setValue(value: Value): void;
+    get(force?: boolean): Value;
 }

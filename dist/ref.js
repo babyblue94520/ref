@@ -4,6 +4,8 @@ const scopeMap = new Map();
 const computeRefQueue = [];
 const scopeQueue = [];
 const txRefs = [];
+const __clear = '__c';
+const __notify = '__n';
 let currentScope = {};
 let cleaning = false;
 let transaction = false;
@@ -19,39 +21,31 @@ function clearDepend(ref) {
         txRefs.push(ref);
         return;
     }
-    cleaning = true;
-    let refMap = scanRef(ref);
-    refMap.forEach((v, r) => {
-        r.clear();
-    });
-    refMap.forEach((v, r) => {
-        r.get();
-    });
-    cleaning = false;
+    doClearDepend(scanRef(ref));
 }
 function clearDepends() {
     if (cleaning)
         return;
-    cleaning = true;
     let refMap = new Map();
-    txRefs.forEach(ref => {
-        scanRef(ref, refMap);
-    });
-    refMap.forEach((v, r) => {
-        r.clear();
-    });
-    refMap.forEach((v, r) => {
-        r.get();
-    });
+    txRefs.forEach(ref => scanRef(ref, refMap));
+    doClearDepend(refMap);
     txRefs.length = 0;
+}
+function doClearDepend(refMap) {
+    if (refMap.size == 0)
+        return;
+    cleaning = true;
+    refMap.forEach(r => r[__clear]());
+    refMap.forEach(r => r[__notify]());
     cleaning = false;
 }
 function scanRef(ref, collection = new Map()) {
     let map = refDependMap.get(ref);
     if (map) {
-        let s = map.size;
         map.forEach(r => {
-            collection.set(r, true);
+            if (collection.get(r))
+                return;
+            collection.set(r, r);
             scanRef(r, collection);
         });
         map.clear();
@@ -61,9 +55,8 @@ function scanRef(ref, collection = new Map()) {
 function addDepend(ref) {
     let currentRef = computeRefQueue[computeRefQueue.length - 1];
     if (currentRef) {
-        if (currentRef == ref) {
-            throw new Error('Doesn\'t depend self!');
-        }
+        if (currentRef == ref)
+            return;
         let refMap = computeIfAbsent(refDependMap, ref, (k) => {
             return new Map();
         });
@@ -110,24 +103,26 @@ export default class Refs {
     /**
      * Create cacheable Ref.
      */
-    ofCache(config, scope) {
+    ofCache(config, scope, operators) {
         let storage = config.local ? this.localStorage : this.sessionStorage;
-        let value = storage.getItem(config.name);
-        if (value) {
+        let value;
+        let cache = storage.getItem(config.name);
+        if (cache) {
             try {
-                value = JSON.parse(value);
+                value = JSON.parse(cache);
             }
             catch (e) {
                 console.warn(e);
-                value = undefined;
             }
         }
         if (value == undefined) {
             value = config.value;
         }
-        return new RefCache(scope, value, (str) => {
-            storage.setItem(config.name, str);
+        let ref = this.of(value, scope, operators);
+        ref.listen(() => {
+            storage.setItem(config.name, ref.stringify());
         });
+        return ref;
     }
     /**
      * Operate any ref in scope.
@@ -184,6 +179,9 @@ export class Ref {
         this.scope = scope;
         this.listeners = new ListenerContainer();
     }
+    stringify() {
+        return this.valueStringify;
+    }
     getScope() {
         return this.scope;
     }
@@ -196,6 +194,12 @@ export class Ref {
         this.listeners.removeAllListener(scope);
     }
     setValue(value) {
+        if (this.doSetValue(value)) {
+            clearDepend(this);
+            this.listeners.dispatch(this.value);
+        }
+    }
+    doSetValue(value) {
         let stringify = JSON.stringify(value);
         if (this.valueStringify === stringify)
             return false;
@@ -204,21 +208,20 @@ export class Ref {
         this.valueStringify = stringify;
         return true;
     }
-    dispatch() {
-        clearDepend(this);
-        this.listeners.dispatch(this.value);
-    }
 }
 export class RefValue extends Ref {
     constructor(scope, provider, /** settable operator */ operators) {
         super(scope);
         this.provider = provider;
         this.operators = operators;
-        this.setValue(provider);
+        this.doSetValue(provider);
     }
     get() {
         addDepend(this);
         return this.value;
+    }
+    clear() {
+        this.set(this.provider);
     }
     set(value, operator) {
         var _a;
@@ -226,47 +229,46 @@ export class RefValue extends Ref {
             console.error('The operator does\'t settable!', operator);
             throw new Error('The operator does\'t settable!');
         }
-        if (this.setValue(value)) {
-            this.dispatch();
-        }
-    }
-    clear() {
-        this.set(this.provider);
+        this.setValue(value);
     }
 }
 export class RefComputed extends Ref {
     constructor(scope, provider) {
         super(scope);
         this.provider = provider;
+        this.dirty = false;
+        this[__clear] = () => {
+            this.valueStringify = undefined;
+            this.dirty = false;
+        };
+        this[__notify] = () => {
+            if (this.listeners.count() == 0)
+                return;
+            this.get(true);
+        };
     }
-    get() {
-        if (this.valueStringify == undefined) {
+    setValue(value) {
+        if (this.doSetValue(value)) {
+            if (this.dirty) {
+                clearDepend(this);
+            }
+            this.listeners.dispatch(this.value);
+            this.dirty = true;
+        }
+    }
+    get(force = false) {
+        addDepend(this);
+        if (this.valueStringify == undefined || force) {
+            let value;
             try {
-                addDepend(this);
                 computeRefQueue.push(this);
-                this.setValue(this.provider());
-                this.dispatch();
+                value = this.provider();
             }
             finally {
                 computeRefQueue.pop();
             }
+            this.setValue(value);
         }
         return this.value;
-    }
-    clear() {
-        this.valueStringify = undefined;
-    }
-}
-export class RefCache extends RefValue {
-    constructor(scope, provider, save) {
-        super(scope, provider);
-        this.save = save;
-    }
-    setValue(value) {
-        let change = super.setValue(value);
-        if (change && this.save) {
-            this.save(this.valueStringify);
-        }
-        return change;
     }
 }
