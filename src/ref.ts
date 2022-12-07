@@ -10,6 +10,9 @@ const scopeQueue: any[] = [];
 
 const txRefs = [];
 
+const __clear = '__c';
+const __notify = '__n';
+
 let currentScope: any = {};
 
 let cleaning = false;
@@ -28,24 +31,23 @@ function clearDepend(ref: Ref): void {
         txRefs.push(ref);
         return;
     }
-    let refMap = scanRef(ref);
-    if (refMap.size == 0) return;
-    cleaning = true;
-    refMap.forEach(r => r['__clear']());
-    refMap.forEach(r => r['__notify']());
-    cleaning = false;
-    return;
+    doClearDepend(scanRef(ref));
 }
 
 function clearDepends(): void {
     if (cleaning) return;
     let refMap = new Map();
     txRefs.forEach(ref => scanRef(ref, refMap));
+    doClearDepend(refMap);
+    txRefs.length = 0;
+}
+
+
+function doClearDepend(refMap: Map<RefComputed, RefComputed>): void {
     if (refMap.size == 0) return;
     cleaning = true;
-    refMap.forEach(r => r['__clear']());
-    refMap.forEach(r => r['__notify']());
-    txRefs.length = 0;
+    refMap.forEach(r => r[__clear]());
+    refMap.forEach(r => r[__notify]());
     cleaning = false;
 }
 
@@ -305,11 +307,11 @@ export class RefComputed<Value = any, Scope = any> extends Ref<Value, Scope>  {
         , protected provider: (() => Value)
     ) {
         super(scope);
-        this['__clear'] = () => {
+        this[__clear] = () => {
             this.valueStringify = undefined;
             this.dirty = false;
         };
-        this['__notify'] = () => {
+        this[__notify] = () => {
             if (this.listeners.count() == 0) return;
             this.get(true);
         };
