@@ -54,8 +54,8 @@ export declare abstract class Ref<Value = any, Scope = any> {
     abstract get(): Value;
     stringify(): string;
     getScope(): Scope;
-    listen(listener: RefListener<Value>, scope?: Scope): void;
-    interrupt(scope: Scope): void;
+    listen(listener: RefListener<Value>, scope?: any): void;
+    interrupt(scope: any): void;
     protected setValue(value: Value): void;
     protected doSetValue(value: Value): boolean;
 }
