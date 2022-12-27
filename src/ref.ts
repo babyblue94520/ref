@@ -243,13 +243,13 @@ export abstract class Ref<Value = any, Scope = any>  {
         return this.scope;
     }
 
-    public listen(listener: RefListener<Value>, scope?: Scope) {
+    public listen(listener: RefListener<Value>, scope?: any) {
         scope = listen(this, scope);
         listener(this.get(), this.oldValue);
         this.listeners.addListener(listener, scope);
     }
 
-    public interrupt(scope: Scope) {
+    public interrupt(scope: any) {
         this.listeners.removeAllListener(scope);
     }
 
