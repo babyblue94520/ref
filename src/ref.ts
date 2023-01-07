@@ -99,9 +99,9 @@ function computeIfAbsent<K, V>(map: Map<K, V>, key: K, callable: ((key: K) => V)
 
 
 export interface RefCacheConfig<Value> {
-    // Cache name
+    /** Cache name*/
     name: string;
-    // Cache value in localStorage or sessionStorage
+    /** Cache value in localStorage or sessionStorage. default cache in sessionStorage.*/
     local?: boolean;
     value: Value;
 }
@@ -292,10 +292,23 @@ export class RefValue<Value = any, Scope = any> extends Ref<Value, Scope> {
 
     public set(value: Value, operator?: any) {
         if ((this.operators?.length || 0) > 0 && this.operators.indexOf(operator) == -1) {
-            console.error('The operator does\'t settable!', operator);
-            throw new Error('The operator does\'t settable!');
+            let message = 'The operator does\'t settable!';
+            console.error(message, operator);
+            throw new Error(message);
         }
         this.setValue(value);
+    }
+
+    /**
+     * Operators can only be set once.
+     */
+    public setOperators(...operators: any[]) {
+        if ((this.operators?.length || 0) > 0) {
+            let message = 'Cannot set operators again!';
+            console.error(message);
+            throw new Error(message);
+        }
+        this.operators = operators;
     }
 }
 

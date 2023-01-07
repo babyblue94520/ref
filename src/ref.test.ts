@@ -206,11 +206,45 @@ let refs = new Refs();
         expect(() => a.set(4)).toThrow();
         expect(a.get()).toBe(3);
     });
+
     test('ref doesn\'t settable 2', () => {
         expect(() => a.set(4, {})).toThrow();
         expect(a.get()).toBe(3);
     });
 
+})();
+
+(() => {
+    let operator1 = {};
+    let operator2 = {};
+    let a = refs.of(1);
+    a.setOperators(operator1, operator2);
+    test('ref setOperators', () => {
+        expect(a.get()).toBe(1);
+        a.set(2, operator1);
+        expect(a.get()).toBe(2);
+        a.set(3, operator2);
+        expect(a.get()).toBe(3);
+    });
+
+    test('ref setOperators doesn\'t settable 1', () => {
+        expect(() => a.set(4)).toThrow();
+        expect(a.get()).toBe(3);
+    });
+
+    test('ref setOperators doesn\'t settable 2', () => {
+        expect(() => a.set(4, {})).toThrow();
+        expect(a.get()).toBe(3);
+    });
+
+    test('ref setOperators doesn\'t settable 2', () => {
+        expect(() => a.set(4, {})).toThrow();
+        expect(a.get()).toBe(3);
+    });
+
+    test('ref doesn\'t setOperators again', () => {
+        expect(() => a.setOperators(operator1, operator2)).toThrow();
+    });
 })();
 
 (() => {
