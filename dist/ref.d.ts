@@ -1,6 +1,8 @@
 import ListenerContainer from './listener';
 export interface RefCacheConfig<Value> {
+    /** Cache name*/
     name: string;
+    /** Cache value in localStorage or sessionStorage. default cache in sessionStorage.*/
     local?: boolean;
     value: Value;
 }
@@ -66,6 +68,10 @@ export declare class RefValue<Value = any, Scope = any> extends Ref<Value, Scope
     get(): Value;
     clear(): void;
     set(value: Value, operator?: any): void;
+    /**
+     * Operators can only be set once.
+     */
+    setOperators(...operators: any[]): void;
 }
 export declare class RefComputed<Value = any, Scope = any> extends Ref<Value, Scope> {
     protected provider: (() => Value);

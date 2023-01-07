@@ -1,6 +1,6 @@
 {
   "name": "ts-refs",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Create a reference object that can be monitored.",
   "main": "./dist/ref.js",
   "typings": "./dist/ref.d.ts",

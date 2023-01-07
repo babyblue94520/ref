@@ -226,10 +226,23 @@ export class RefValue extends Ref {
     set(value, operator) {
         var _a;
         if ((((_a = this.operators) === null || _a === void 0 ? void 0 : _a.length) || 0) > 0 && this.operators.indexOf(operator) == -1) {
-            console.error('The operator does\'t settable!', operator);
-            throw new Error('The operator does\'t settable!');
+            let message = 'The operator does\'t settable!';
+            console.error(message, operator);
+            throw new Error(message);
         }
         this.setValue(value);
+    }
+    /**
+     * Operators can only be set once.
+     */
+    setOperators(...operators) {
+        var _a;
+        if ((((_a = this.operators) === null || _a === void 0 ? void 0 : _a.length) || 0) > 0) {
+            let message = 'Cannot set operators again!';
+            console.error(message);
+            throw new Error(message);
+        }
+        this.operators = operators;
     }
 }
 export class RefComputed extends Ref {
