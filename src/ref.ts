@@ -116,13 +116,16 @@ export interface RefScope {
 export interface RefStorage {
     getItem(key: string): string;
     setItem(key: string, value: string);
+    removeItem(key: string): void;
 }
+
+const defaultStorage = { getItem(key) { return null; }, setItem(key, value) { }, removeItem(key) { } };
 
 export default class Refs {
 
-    private localStorage: RefStorage = { getItem(key) { return null; }, setItem(key, value) { } };
+    private localStorage: RefStorage = defaultStorage;
 
-    private sessionStorage: RefStorage = { getItem(key) { return null; }, setItem(key, value) { } };
+    private sessionStorage: RefStorage = defaultStorage;
 
     /**
      * 
@@ -158,7 +161,12 @@ export default class Refs {
         }
         let ref = this.of(value, scope, operators);
         ref.listen(() => {
-            storage.setItem(config.name, ref.stringify());
+            let value = ref.stringify();
+            if (value === undefined) {
+                storage.removeItem(config.name);
+            } else {
+                storage.setItem(config.name, value);
+            }
         });
         return ref;
     }
@@ -261,7 +269,7 @@ export abstract class Ref<Value = any, Scope = any>  {
     }
 
     protected doSetValue(value: Value): boolean {
-        let stringify = JSON.stringify(value);
+        let stringify = value === undefined ? undefined : JSON.stringify(value);
         if (this.valueStringify === stringify) return false;
         this.oldValue = this.value;
         this.value = value;
