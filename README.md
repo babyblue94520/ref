@@ -4,6 +4,14 @@ Create a reference object that can be monitored.
 
 [npm](https://www.npmjs.com/package/ts-refs)
 
+
+## Browser support
+
+| Chrome | Edge | Firefox | Opera | Safari | Chrome Android | Firefox for Android | Opera Android | Safari on iOS | Samsung Internet | WebView Android | Deno | Node.js |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | 12 | 1.5 | 9.5 | 3 | 18 | 4 | 10.1 | 1 | 1.0 | 37 | 1.0 | 0.10.0
+
+
 ## Install
 
 ```cmd
