@@ -149,7 +149,7 @@ export default class Refs {
         let storage = config.local ? this.localStorage : this.sessionStorage;
         let value: Value;
         let cache: string = storage.getItem(config.name);
-        if (cache) {
+        if (cache && cache != 'undefined') {
             try {
                 value = JSON.parse(cache);
             } catch (e) {
@@ -244,6 +244,9 @@ export abstract class Ref<Value = any, Scope = any>  {
     public abstract get(): Value;
 
     public stringify(): string {
+        if(this.valueStringify==undefined){
+
+        }
         return this.valueStringify;
     }
 
