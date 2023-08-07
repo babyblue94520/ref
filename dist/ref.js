@@ -82,10 +82,11 @@ function computeIfAbsent(map, key, callable) {
     }
     return value;
 }
+const defaultStorage = { getItem(key) { return null; }, setItem(key, value) { }, removeItem(key) { } };
 export default class Refs {
     constructor() {
-        this.localStorage = { getItem(key) { return null; }, setItem(key, value) { } };
-        this.sessionStorage = { getItem(key) { return null; }, setItem(key, value) { } };
+        this.localStorage = defaultStorage;
+        this.sessionStorage = defaultStorage;
     }
     /**
      *
@@ -107,7 +108,7 @@ export default class Refs {
         let storage = config.local ? this.localStorage : this.sessionStorage;
         let value;
         let cache = storage.getItem(config.name);
-        if (cache) {
+        if (cache && cache != 'undefined') {
             try {
                 value = JSON.parse(cache);
             }
@@ -120,7 +121,13 @@ export default class Refs {
         }
         let ref = this.of(value, scope, operators);
         ref.listen(() => {
-            storage.setItem(config.name, ref.stringify());
+            let value = ref.stringify();
+            if (value === undefined) {
+                storage.removeItem(config.name);
+            }
+            else {
+                storage.setItem(config.name, value);
+            }
         });
         return ref;
     }
@@ -180,6 +187,8 @@ export class Ref {
         this.listeners = new ListenerContainer();
     }
     stringify() {
+        if (this.valueStringify == undefined) {
+        }
         return this.valueStringify;
     }
     getScope() {
@@ -200,7 +209,7 @@ export class Ref {
         }
     }
     doSetValue(value) {
-        let stringify = JSON.stringify(value);
+        let stringify = value === undefined ? undefined : JSON.stringify(value);
         if (this.valueStringify === stringify)
             return false;
         this.oldValue = this.value;

@@ -14,6 +14,7 @@ export interface RefScope {
 export interface RefStorage {
     getItem(key: string): string;
     setItem(key: string, value: string): any;
+    removeItem(key: string): void;
 }
 export default class Refs {
     private localStorage;

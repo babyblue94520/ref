@@ -244,7 +244,7 @@ export abstract class Ref<Value = any, Scope = any>  {
     public abstract get(): Value;
 
     public stringify(): string {
-        if(this.valueStringify==undefined){
+        if (this.valueStringify == undefined) {
 
         }
         return this.valueStringify;
@@ -267,7 +267,7 @@ export abstract class Ref<Value = any, Scope = any>  {
     protected setValue(value: Value) {
         if (this.doSetValue(value)) {
             clearDepend(this);
-            this.listeners.dispatch(this.value);
+            this.listeners.dispatch(this.value, this.oldValue);
         }
     }
 
@@ -346,7 +346,7 @@ export class RefComputed<Value = any, Scope = any> extends Ref<Value, Scope>  {
             if (this.dirty) {
                 clearDepend(this);
             }
-            this.listeners.dispatch(this.value);
+            this.listeners.dispatch(this.value, this.oldValue);
             this.dirty = true;
         }
     }
