@@ -205,7 +205,7 @@ export class Ref {
     setValue(value) {
         if (this.doSetValue(value)) {
             clearDepend(this);
-            this.listeners.dispatch(this.value);
+            this.listeners.dispatch(this.value, this.oldValue);
         }
     }
     doSetValue(value) {
@@ -274,7 +274,7 @@ export class RefComputed extends Ref {
             if (this.dirty) {
                 clearDepend(this);
             }
-            this.listeners.dispatch(this.value);
+            this.listeners.dispatch(this.value, this.oldValue);
             this.dirty = true;
         }
     }
