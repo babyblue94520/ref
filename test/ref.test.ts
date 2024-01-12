@@ -1,4 +1,4 @@
-import Refs from './ref';
+import Refs from '../src/ref';
 
 let refs = new Refs();
 

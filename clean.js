@@ -1,8 +1,9 @@
-const fs = require('fs');
-let dir = 'dist';
+import fs from "fs";
+
+let dir = "lib";
 try {
-    fs.rmdirSync(dir,{recursive:true});
-    console.log(`${dir} is deleted!`);
+  fs.rmdirSync(dir, { recursive: true });
+  console.log(`${dir} is deleted!`);
 } catch (err) {
-    console.log(`${dir} is not exist.`);
+  console.log(`${dir} is not exist.`);
 }
